@@ -21,7 +21,9 @@ def final_answer(text):
 
 
 def _number(s):
-    s = s.replace("−", "-").replace(",", "") if re.search(r"\d,\d{3}\b", s) else s.replace("−", "-").replace(",", ".")
+    """The answer's number: after the last '=' if it shows its working; '1,250' is a thousand, '0,125' and '3,5' decimals."""
+    s = s.replace("−", "-").rsplit("=", 1)[-1]
+    s = s.replace(",", "") if re.search(r"(?<![\d.])[1-9]\d{0,2}(?:,\d{3})+(?![\d,])", s) else s.replace(",", ".")
     m = re.findall(r"-?\d+(?:\.\d+)?", s)
     return float(m[0]) if m else None
 
@@ -32,10 +34,16 @@ def g_number(t, text):
     return (1.0 if ok else 0.0), f"got {v}, expected {t['expect']['value']}"
 
 
+HEDGE = re.compile(r"\b(?:or|ili|and|either|maybe|possibly|perhaps)\b|/", re.I)
+
+
 def g_word(t, text):
-    got = final_answer(text).lower()
+    """The expected word or name, alone or in a short sentence; a hedged answer ("Ana or Marko") does not count."""
+    got = re.sub(r"[*_`\"']", "", final_answer(text)).strip().rstrip(".!").lower()
     exp = t["expect"]["value"].lower()
-    return (1.0 if re.search(rf"\b{re.escape(exp)}\b", got) else 0.0), f"got {got[:40]!r}, expected {exp!r}"
+    ok = got == exp or (re.search(rf"\b{re.escape(exp)}\b", got) is not None and not HEDGE.search(got.replace(exp, ""))
+                        and len(got.split()) <= 6)
+    return (1.0 if ok else 0.0), f"got {got[:40]!r}, expected {exp!r}"
 
 
 def g_exact(t, text):
@@ -129,7 +137,7 @@ def _code_is_safe(code):
             mods = [a.name.split(".")[0] for a in n.names] if isinstance(n, ast.Import) else [(n.module or "").split(".")[0]]
             if any(m not in ALLOWED_IMPORTS for m in mods):
                 return f"import not allowed: {mods}"
-        if isinstance(n, ast.Name) and n.id in FORBIDDEN_NAMES:
+        if isinstance(n, ast.Name) and (n.id in FORBIDDEN_NAMES or n.id.startswith("__") and n.id != "__name__"):
             return f"name not allowed: {n.id}"
         if isinstance(n, ast.Attribute) and n.attr.startswith("__"):
             return f"attribute not allowed: {n.attr}"

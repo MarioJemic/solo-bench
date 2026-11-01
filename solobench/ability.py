@@ -9,7 +9,7 @@ Partial credit (code tests, JSON fields) counts as a fraction of a right answer.
 import math
 import re
 
-HARD_ID = re.compile(r"^h[xr]-(\w+)-L(\d)-")
+HARD_ID = re.compile(r"^h[xr]-(\w+)-L(\d+)-")             # levels 10-15 have two digits
 BASIC_ID = re.compile(r"^(?:fx|rnd)-(.+?)-\d+$")
 PRIOR_THETA, PRIOR_B = 2.5, 3.0          # standard deviations of the priors (keep perfect scores finite)
 LEVEL_STEP = 1.0                          # assumed extra difficulty per level where a level has no data yet
