@@ -1,8 +1,9 @@
-"""The hard exam: task families with difficulty levels 1–5, so even the strongest models stay below 100 %.
+"""The hard exam: task families with difficulty levels 1–9, so even the strongest models stay below 100 %.
 
 Each family is a generator g(rng, level) -> task. Every level is the same kind of work, only bigger or with more
 traps (more steps, longer texts, more people, more rules), so a family's levels form one scale. Graders are all
-deterministic. The level of each family adapts (hard.py): the best model should get about 75 %.
+deterministic. Levels 6–9 came later (the best models had 100 % at 5): levels 1–5 stay exactly as they were, so
+earlier results keep their meaning. The level of each family adapts (hard.py): the best model should get about 75 %.
 """
 import itertools
 from datetime import date, timedelta
@@ -109,10 +110,15 @@ def h_order(rng, level):
         facts.append(rng.choice([f"{people[i]} is taller than {people[j]}.", f"{people[j]} is not taller than {people[i]}."]))
     rng.shuffle(facts)
     k = 1 if level == 1 else rng.randint(2, n - 1)
-    nth = {1: "tallest", 2: "second tallest", 3: "third tallest", 4: "fourth tallest", 5: "fifth tallest",
-           6: "sixth tallest", 7: "seventh tallest", 8: "eighth tallest"}[k]
+    nth = "tallest" if k == 1 else f"{_ordinal(k)} tallest"
     return {"cat": "reason", "type": "word", "expect": {"value": people[k - 1]},
             "prompt": " ".join(facts) + f" Everyone has a different height. Who is the {nth}?" + ANSWER}
+
+
+def _ordinal(k):
+    words = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+             "eleventh", "twelfth", "thirteenth"]
+    return words[k] if k < len(words) else f"{k}th"
 
 
 def _clue_ok(clue, pos):
@@ -142,12 +148,14 @@ def _clue_text(clue):
 
 def h_houses(rng, level):
     """A logic puzzle: n people in n houses in a row; clues are added until exactly one arrangement fits."""
-    n = 3 + min(level, 4)
+    n = 3 + min(level, 4) if level <= 5 else 8           # 8! arrangements is the most worth checking here
     people = rng.sample(FIRST, n)
     truth = people[:]
     rng.shuffle(truth)
     pos = {p: i for i, p in enumerate(truth)}
     kinds = ["left", "right_next", "next", "apart", "not_at"] + (["at"] if level <= 2 else [])
+    if level >= 8:                                       # only weak clues: many more of them to combine
+        kinds = ["left", "next", "apart", "not_at"]
     perms = [dict(zip(p, range(n))) for p in itertools.permutations(people)]
     clues = []
     while len(perms) > 1:
@@ -172,6 +180,12 @@ def h_count(rng, level):
     words = [_word(rng, rng.randint(1, 4)) for _ in range(12 * level)]
     text = " ".join(words)
     letter = rng.choice("aeiolmnrst")
+    if level >= 7:
+        other = rng.choice([c for c in "aeiolmnrst" if c != letter])
+        n = sum(1 for w in words if letter in w and other not in w)
+        return {"cat": "reason", "type": "number", "expect": {"value": n, "tol": 0},
+                "prompt": f"How many WORDS in this text contain the letter '{letter}' but not the letter '{other}'?\n"
+                          f"{text}" + ANSWER}
     if level >= 4:
         n = sum(1 for w in words if letter in w)
         return {"cat": "reason", "type": "number", "expect": {"value": n, "tol": 0},
@@ -238,16 +252,23 @@ def h_people(rng, level):
 
 
 # ------------------------------------------------------------------ instructions
+LONG_WORDS = ["thunderstorm", "neighbourhood", "championship", "wonderfully", "skyscrapers"]  # each lacks 2 of e a i o t
+
+
 def h_acrostic(rng, level):
     """Lines whose first letters spell a word; exact words per line from level 2; a banned letter from level 4."""
     word = rng.choice(["solar", "river", "planet", "market", "silent", "garden", "winter", "candle", "harbour",
-                       "lantern"])[: 3 + level]
+                       "lantern"] if level <= 5 else LONG_WORDS)[: 3 + level]
     e = {"acrostic": word, "lines": len(word), "plain": True}
     rules = [f"exactly {len(word)} lines", f"the first letters of the lines spell '{word.upper()}'"]
     if level >= 2:
         e["line_words"] = rng.randint(4, 7)
         rules.append(f"every line has exactly {e['line_words']} words")
-    if level >= 4:
+    if level >= 7:
+        banned = "".join(rng.sample([c for c in "eaiot" if c not in word], 2))
+        e["forbid"] = banned
+        rules.append(f"the letters '{banned[0]}' and '{banned[1]}' never appear (upper or lower case)")
+    elif level >= 4:
         banned = rng.choice([c for c in "eaiot" if c not in word])
         e["forbid"] = banned
         rules.append(f"the letter '{banned}' never appears (upper or lower case)")
@@ -281,6 +302,12 @@ def h_transform(rng, level):
              ("reverse the letters inside every word", lambda ws: [w[::-1] for w in ws]),
              ("drop the first letter of every word", lambda ws: [w[1:] for w in ws]),
              ("move the last word to the front", lambda ws: ws[-1:] + ws[:-1])]
+    if level >= 6:                                       # levels 1-5 draw from the first five steps, as before
+        steps += [("sort the words alphabetically, ignoring upper/lower case", lambda ws: sorted(ws, key=str.lower)),
+                  ("swap the first and the last letter of every word", lambda ws: [w[-1] + w[1:-1] + w[0] if len(w) > 1
+                                                                                   else w for w in ws]),
+                  ("double the last letter of every word", lambda ws: [w + w[-1:] for w in ws]),
+                  ("remove every word that has fewer than 4 letters", lambda ws: [w for w in ws if len(w) >= 4])]
     chosen = rng.sample(steps, level)
     ws = words[:]
     for _t, fn in chosen:
@@ -292,7 +319,7 @@ def h_transform(rng, level):
 
 FAMILIES = [h_chain, h_money, h_base, h_order, h_houses, h_count, h_workdays, h_code_rpn, h_code_wrap, h_code_cover,
             h_people, h_acrostic, h_sortmix, h_transform]
-MAX_LEVEL = 5
+MAX_LEVEL = 9
 
 
 def family(g):

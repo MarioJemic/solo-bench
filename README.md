@@ -7,7 +7,7 @@ its own progress.
 * **Nothing to memorise.** 14 task families (long arithmetic, money chains, base conversion, ranking puzzles, logic
   puzzles, letter counting, working days, three programming families, extraction with traps, acrostics, sorting, string
   transformations) are generated from a random seed at run time. Graders are deterministic: no judge model.
-* **It stays hard.** Every family has 5 difficulty levels. Solo raises a family's level when the best model gets 90 %
+* **It stays hard.** Every family has 9 difficulty levels (6–9 added when the best models reached 100 % at 5; 1–5 are unchanged). Solo raises a family's level when the best model gets 90 %
   of it, so the best stays around 75 % instead of everyone sitting at 100 %.
 * **One scale.** Results are put on one ability scale (Rasch / 1-parameter IRT), also results made at different levels.
 * **Models and systems.** Any OpenAI-compatible API, or any command-line system (the task goes to it on standard

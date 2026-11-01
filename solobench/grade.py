@@ -82,8 +82,9 @@ def g_rules(t, text):
         fails.append(f"first letters spell {''.join(ln[:1] for ln in lines)!r}, not {e['acrostic']!r}")
     if e.get("line_words") and any(len(re.findall(r"[\w'’-]+", ln)) != e["line_words"] for ln in lines):
         fails.append(f"not every line has {e['line_words']} words")
-    if e.get("forbid") and e["forbid"].lower() in body.lower():
-        fails.append(f"contains the letter {e['forbid']!r}")
+    for c in e.get("forbid") or "":                      # one letter, or several (each one is banned)
+        if c.lower() in body.lower():
+            fails.append(f"contains the letter {c!r}")
     if e.get("last_word"):
         words = re.findall(r"[\w'’-]+", body)
         if not words or words[-1].lower() != e["last_word"]:
