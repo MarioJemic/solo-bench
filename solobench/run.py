@@ -4,7 +4,7 @@
     python -m solobench run --cmd "claude -p" --name "Claude Code (sonnet)"
     python -m solobench report results/*.json            # -> report.html: ability vs cost, one scale for all
 
-Every task is generated from a random seed at run time (14 families × 9 difficulty levels), so there is nothing to
+Every task is generated from a random seed at run time (14 families × 15 difficulty levels), so there is nothing to
 memorise; graders are deterministic. Abilities (Rasch / 1-parameter IRT) put every result on one scale, also results
 made at different levels. Python standard library only.
 """

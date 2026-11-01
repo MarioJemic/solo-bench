@@ -1,9 +1,9 @@
-"""The hard exam: task families with difficulty levels 1–9, so even the strongest models stay below 100 %.
+"""The hard exam: task families with difficulty levels 1–15, so even the strongest models stay below 100 %.
 
 Each family is a generator g(rng, level) -> task. Every level is the same kind of work, only bigger or with more
 traps (more steps, longer texts, more people, more rules), so a family's levels form one scale. Graders are all
-deterministic. Levels 6–9 came later (the best models had 100 % at 5): levels 1–5 stay exactly as they were, so
-earlier results keep their meaning. The level of each family adapts (hard.py): the best model should get about 75 %.
+deterministic. Levels 6–9 came later (the best models had 100 % at 5), and 10–15 after that (100 % at 7): earlier
+levels stay exactly as they were, so earlier results keep their meaning. The level of each family adapts (hard.py): the best model should get about 75 %.
 """
 import itertools
 from datetime import date, timedelta
@@ -23,7 +23,7 @@ CITIES = ["Zagreb", "Split", "Rijeka", "Osijek", "Zadar", "Pula", "Dubrovnik", "
 # ------------------------------------------------------------------ math
 def h_chain(rng, level):
     """A long integer expression with brackets: more operations and bigger numbers per level."""
-    n_ops, digits = 2 + 2 * level, min(1 + level, 4)
+    n_ops, digits = 2 + 2 * level, min(1 + level, 4) if level <= 9 else min(level - 5, 7)
 
     def num():
         return rng.randint(10 ** (digits - 1), 10 ** digits - 1)
@@ -308,7 +308,7 @@ def h_transform(rng, level):
                                                                                    else w for w in ws]),
                   ("double the last letter of every word", lambda ws: [w + w[-1:] for w in ws]),
                   ("remove every word that has fewer than 4 letters", lambda ws: [w for w in ws if len(w) >= 4])]
-    chosen = rng.sample(steps, level)
+    chosen = rng.sample(steps, min(level, len(steps)))
     ws = words[:]
     for _t, fn in chosen:
         ws = fn(ws)
@@ -319,7 +319,7 @@ def h_transform(rng, level):
 
 FAMILIES = [h_chain, h_money, h_base, h_order, h_houses, h_count, h_workdays, h_code_rpn, h_code_wrap, h_code_cover,
             h_people, h_acrostic, h_sortmix, h_transform]
-MAX_LEVEL = 9
+MAX_LEVEL = 15                 # past 9 the families just grow (longer, more people, more steps)
 
 
 def family(g):
